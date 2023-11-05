@@ -97,7 +97,7 @@ let outputLines = [];
 
 let suites = core.getInput("suites").split(",");
 for (const suite of suites) {
-  let junitPath = `./h2spec-${suite}.xml`;
+  let junitPath = `./${suite}.xml`;
   let current = await getCurrentResults(junitPath);
   let reference = await getReferenceResults(suite);
   if (current.failed > reference.failed) {
