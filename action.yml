@@ -1,0 +1,13 @@
+name: 'Report h2spec regressions'
+description: 'Report h2spec regressions'
+inputs:
+  github-token:
+    description: 'GitHub token'
+    required: true
+  suites:
+    description: 'Comma-separated list of suites to check, e.g. h2spec-generic,h2spec-hpack,h2spec-http2'
+    required: true
+    default: ''
+runs:
+  using: 'node20'
+  main: 'index.mjs'
