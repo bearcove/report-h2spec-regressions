@@ -32182,7 +32182,7 @@ let outputLines = [];
 
 let suites = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("suites").split(",");
 for (const suite of suites) {
-  let junitPath = `target/h2spec-${suite}.xml`;
+  let junitPath = `./h2spec-${suite}.xml`;
   let current = await getCurrentResults(junitPath);
   let reference = await getReferenceResults(suite);
   if (current.failed > reference.failed) {
