@@ -31872,6 +31872,135 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
+/***/ 4850:
+/***/ ((module, __unused_webpack___webpack_exports__, __nccwpck_require__) => {
+
+__nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
+/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(4181);
+/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(_actions_core__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(2726);
+/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(_actions_github__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var fast_xml_parser__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(605);
+/* harmony import */ var fast_xml_parser__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__nccwpck_require__.n(fast_xml_parser__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var fs_promises__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(3292);
+/* harmony import */ var fs_promises__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__nccwpck_require__.n(fs_promises__WEBPACK_IMPORTED_MODULE_3__);
+
+
+
+
+let githubToken = _actions_core__WEBPACK_IMPORTED_MODULE_0___default().getInput("github-token");
+if (!githubToken) {
+    console.log("No github-token input provided, exiting");
+    process.exit(1);
+}
+let octokit = _actions_github__WEBPACK_IMPORTED_MODULE_1___default().getOctokit(githubToken);
+let checks = await octokit.rest.checks.listForRef({
+    ...(_actions_github__WEBPACK_IMPORTED_MODULE_1___default().context.repo),
+    ref: "main",
+});
+let xmlParser = new fast_xml_parser__WEBPACK_IMPORTED_MODULE_2__.XMLParser({
+    ignoreAttributes: false,
+});
+let getCurrentResults = async (junitPath) => {
+    let doc = xmlParser.parse(await fs_promises__WEBPACK_IMPORTED_MODULE_3__.readFile(junitPath));
+    let results = {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        skipped: 0,
+    };
+    for (const ts of doc.testsuites.testsuite) {
+        let tests = parseInt(ts["@_tests"], 10);
+        let failures = parseInt(ts["@_failures"], 10);
+        let errors = parseInt(ts["@_errors"], 10);
+        let skipped = parseInt(ts["@_skipped"], 10);
+        results.total += tests;
+        results.failed += failures + errors;
+        results.skipped += skipped;
+        results.passed += tests - (failures + errors + skipped);
+    }
+    return results;
+};
+/** Get the results of the last run of h2spec on the `main` branch */
+let getReferenceResults = async (checkName) => {
+    let check = checks.data.check_runs.find((c) => c.name == checkName);
+    if (!check) {
+        console.log(`No ${JSON.stringify(checkName)} check found`);
+        process.exit(0);
+    }
+    // example input:
+    //   **94** tests were completed in **NaNms** with **70** passed, **24** failed and **0** skipped
+    // example output:
+    //   { total: 94, passed: 70, failed: 24, skipped: 0 }
+    const regex = /[*][*](\d+)[*][*] tests were completed in [*][*](\w+)ms[*][*] with [*][*](\d+)[*][*] passed, [*][*](\d+)[*][*] failed and [*][*](\d+)[*][*] skipped/g;
+    if (!check.output.summary) {
+        console.log(`No summary found for check ${checkName}`);
+        process.exit(1);
+    }
+    let m = regex.exec(check.output.summary);
+    if (!m) {
+        console.log(`Output summary didn't match expected structure`);
+        console.log(`Structure was: ${regex}`);
+        console.log(`Output was:\n${check.output.summary}`);
+        process.exit(1);
+    }
+    let results = {
+        total: parseInt(m[1], 10),
+        passed: parseInt(m[3], 10),
+        failed: parseInt(m[4], 10),
+        skipped: parseInt(m[5], 10),
+    };
+    return results;
+};
+let regressionsDetected = false;
+let outputLines = [];
+let suites = _actions_core__WEBPACK_IMPORTED_MODULE_0___default().getInput("suites").split(",");
+for (const suite of suites) {
+    let junitPath = `./${suite}.xml`;
+    let current = await getCurrentResults(junitPath);
+    let reference = await getReferenceResults(suite);
+    if (current.failed > reference.failed) {
+        outputLines.push(`Regression detected in ${suite}: ${current.failed} > ${reference.failed}`);
+        regressionsDetected = true;
+    }
+    else {
+        let diff;
+        if (current.failed == reference.failed) {
+            diff = "unchanged";
+        }
+        else if (current.failed < reference.failed) {
+            diff = `-${reference.failed - current.failed}`;
+        }
+        else if (current.failed > reference.failed) {
+            diff = `+${current.failed - reference.failed}`;
+        }
+        outputLines.push(`No regression in ${suite}: failed count ${diff} (${current.passed} passed, ${current.failed} failed)`);
+    }
+}
+if (regressionsDetected) {
+    outputLines.push(`Regressions detected, failing the build`);
+    process.exit(1);
+}
+// Leave a comment on the PR with all lines in outputLines
+let comment = outputLines.join("\n");
+if ((_actions_github__WEBPACK_IMPORTED_MODULE_1___default().context.issue)) {
+    let issue_number = (_actions_github__WEBPACK_IMPORTED_MODULE_1___default().context.issue.number);
+    console.log(`Leaving comment on PR #${issue_number}`);
+    await octokit.rest.issues.createComment({
+        ...(_actions_github__WEBPACK_IMPORTED_MODULE_1___default().context.repo),
+        issue_number,
+        body: comment,
+    });
+}
+else {
+    console.log(`Not a PR, not leaving a comment. Comment would've been:\n${comment}`);
+}
+
+__webpack_async_result__();
+} catch(e) { __webpack_async_result__(e); } }, 1);
+
+/***/ }),
+
 /***/ 9491:
 /***/ ((module) => {
 
@@ -32073,164 +32202,6 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("worker_threa
 
 module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("zlib");
 
-/***/ }),
-
-/***/ 5349:
-/***/ ((__webpack_module__, __unused_webpack___webpack_exports__, __nccwpck_require__) => {
-
-__nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
-/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(4181);
-/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(2726);
-/* harmony import */ var fast_xml_parser__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(605);
-/* harmony import */ var fs_promises__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(3292);
-
-
-
-
-
-
-/**
- * @typedef {Object} Spec - Specification to check
- * @property {string} junitPath - Path to the JUnit XML file
- * @property {string} checkName - Name of the check to compare against
- */
-
-/**
- * @typedef {Object} Results - Results of a test run
- * @property {number} total - Total number of tests
- * @property {number} passed - Number of tests passed
- * @property {number} failed - Number of tests failed
- * @property {number} skipped - Number of tests skipped
- */
-
-let githubToken = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("github-token");
-if (!githubToken) {
-  console.log("No github-token input provided, exiting");
-  process.exit(1);
-}
-let octokit = _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit(githubToken);
-
-let checks = await octokit.rest.checks.listForRef({
-  ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
-  ref: "main",
-});
-
-let xmlParser = new fast_xml_parser__WEBPACK_IMPORTED_MODULE_2__.XMLParser({
-  ignoreAttributes: false,
-});
-
-/**
- * @param {string} junitPath - Path to the JUnit XML file
- */
-let getCurrentResults = async (junitPath) => {
-  let doc = xmlParser.parse(await fs_promises__WEBPACK_IMPORTED_MODULE_3__.readFile(junitPath));
-
-  /**
-   * @type {Results}
-   */
-  let results = {
-    total: 0,
-    passed: 0,
-    failed: 0,
-    skipped: 0,
-  };
-
-  for (const ts of doc.testsuites.testsuite) {
-    let tests = parseInt(ts["@_tests"], 10);
-    let failures = parseInt(ts["@_failures"], 10);
-    let errors = parseInt(ts["@_errors"], 10);
-    let skipped = parseInt(ts["@_skipped"], 10);
-
-    results.total += tests;
-    results.failed += failures + errors;
-    results.skipped += skipped;
-    results.passed += tests - (failures + errors + skipped);
-  }
-
-  return results;
-};
-
-/**
- * Get the results of the last run of h2spec on the `main` branch
- * @param {string} checkName
- * @returns {Results}
- */
-let getReferenceResults = async (checkName) => {
-  let check = checks.data.check_runs.find((c) => c.name == checkName);
-  if (!check) {
-    console.log(`No ${JSON.stringify(checkName)} check found`);
-    process.exit(0);
-  }
-
-  // example input:
-  //   **94** tests were completed in **NaNms** with **70** passed, **24** failed and **0** skipped
-  // example output:
-  //   { total: 94, passed: 70, failed: 24, skipped: 0 }
-  const regex =
-    /[*][*](\d+)[*][*] tests were completed in [*][*](\w+)ms[*][*] with [*][*](\d+)[*][*] passed, [*][*](\d+)[*][*] failed and [*][*](\d+)[*][*] skipped/g;
-  let m = regex.exec(check.output.summary);
-  return {
-    total: parseInt(m[1], 10),
-    passed: parseInt(m[3], 10),
-    failed: parseInt(m[4], 10),
-    skipped: parseInt(m[5], 10),
-  };
-};
-
-let regressionsDetected = false;
-let outputLines = [];
-
-let suites = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("suites").split(",");
-for (const suite of suites) {
-  let junitPath = `./${suite}.xml`;
-  let current = await getCurrentResults(junitPath);
-  let reference = await getReferenceResults(suite);
-  if (current.failed > reference.failed) {
-    outputLines.push(
-      `Regression detected in ${spec.checkName}: ${current.failed} > ${reference.failed}`,
-    );
-    regressionsDetected = true;
-  } else {
-    let diff;
-    if (current.failed == reference.failed) {
-      diff = "unchanged";
-    } else if (current.failed < reference.failed) {
-      diff = `-${reference.failed - current.failed}`;
-    } else if (current.failed > reference.failed) {
-      diff = `+${current.failed - reference.failed}`;
-    }
-
-    outputLines.push(
-      `No regression in ${spec.checkName}: failed count ${diff} (${current.passed} passed, ${current.failed} failed)`,
-    );
-  }
-}
-
-if (regressionsDetected) {
-  outputLines.push(`Regressions detected, failing the build`);
-  process.exit(1);
-}
-
-// Leave a comment on the PR with all lines in outputLines
-let comment = outputLines.join("\n");
-
-if (_actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue) {
-  let issue_number = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue.number;
-  console.log(`Leaving comment on PR #${issue_number}`);
-  await octokit.rest.issues.createComment({
-    ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
-    issue_number,
-    body: comment,
-  });
-} else {
-  console.log(
-    `Not a PR, not leaving a comment. Comment would've been:\n${comment}`,
-  );
-}
-
-__webpack_async_result__();
-} catch(e) { __webpack_async_result__(e); } }, 1);
-
 /***/ })
 
 /******/ });
@@ -32335,6 +32306,35 @@ __webpack_async_result__();
 /******/ 	};
 /******/ })();
 /******/ 
+/******/ /* webpack/runtime/compat get default export */
+/******/ (() => {
+/******/ 	// getDefaultExport function for compatibility with non-harmony modules
+/******/ 	__nccwpck_require__.n = (module) => {
+/******/ 		var getter = module && module.__esModule ?
+/******/ 			() => (module['default']) :
+/******/ 			() => (module);
+/******/ 		__nccwpck_require__.d(getter, { a: getter });
+/******/ 		return getter;
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/define property getters */
+/******/ (() => {
+/******/ 	// define getter functions for harmony exports
+/******/ 	__nccwpck_require__.d = (exports, definition) => {
+/******/ 		for(var key in definition) {
+/******/ 			if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
+/******/ 				Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 			}
+/******/ 		}
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/hasOwnProperty shorthand */
+/******/ (() => {
+/******/ 	__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ })();
+/******/ 
 /******/ /* webpack/runtime/compat */
 /******/ 
 /******/ if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = new URL('.', import.meta.url).pathname.slice(import.meta.url.match(/^file:\/\/\/\w:/) ? 1 : 0, -1) + "/";
@@ -32344,6 +32344,6 @@ __webpack_async_result__();
 /******/ // startup
 /******/ // Load entry module and return exports
 /******/ // This entry module used 'module' so it can't be inlined
-/******/ var __webpack_exports__ = __nccwpck_require__(5349);
+/******/ var __webpack_exports__ = __nccwpck_require__(4850);
 /******/ __webpack_exports__ = await __webpack_exports__;
 /******/ 

@@ -2,21 +2,14 @@ import core from "@actions/core";
 import github from "@actions/github";
 
 import { XMLParser } from "fast-xml-parser";
-import fs from "fs/promises";
+import * as fs from "fs/promises";
 
-/**
- * @typedef {Object} Spec - Specification to check
- * @property {string} junitPath - Path to the JUnit XML file
- * @property {string} checkName - Name of the check to compare against
- */
-
-/**
- * @typedef {Object} Results - Results of a test run
- * @property {number} total - Total number of tests
- * @property {number} passed - Number of tests passed
- * @property {number} failed - Number of tests failed
- * @property {number} skipped - Number of tests skipped
- */
+interface Results {
+  total: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+}
 
 let githubToken = core.getInput("github-token");
 if (!githubToken) {
@@ -34,16 +27,10 @@ let xmlParser = new XMLParser({
   ignoreAttributes: false,
 });
 
-/**
- * @param {string} junitPath - Path to the JUnit XML file
- */
-let getCurrentResults = async (junitPath) => {
+let getCurrentResults = async (junitPath: string) => {
   let doc = xmlParser.parse(await fs.readFile(junitPath));
 
-  /**
-   * @type {Results}
-   */
-  let results = {
+  let results: Results = {
     total: 0,
     passed: 0,
     failed: 0,
@@ -65,12 +52,8 @@ let getCurrentResults = async (junitPath) => {
   return results;
 };
 
-/**
- * Get the results of the last run of h2spec on the `main` branch
- * @param {string} checkName
- * @returns {Results}
- */
-let getReferenceResults = async (checkName) => {
+/** Get the results of the last run of h2spec on the `main` branch */
+let getReferenceResults = async (checkName: string) => {
   let check = checks.data.check_runs.find((c) => c.name == checkName);
   if (!check) {
     console.log(`No ${JSON.stringify(checkName)} check found`);
@@ -83,17 +66,30 @@ let getReferenceResults = async (checkName) => {
   //   { total: 94, passed: 70, failed: 24, skipped: 0 }
   const regex =
     /[*][*](\d+)[*][*] tests were completed in [*][*](\w+)ms[*][*] with [*][*](\d+)[*][*] passed, [*][*](\d+)[*][*] failed and [*][*](\d+)[*][*] skipped/g;
+
+  if (!check.output.summary) {
+    console.log(`No summary found for check ${checkName}`);
+    process.exit(1);
+  }
   let m = regex.exec(check.output.summary);
-  return {
+  if (!m) {
+    console.log(`Output summary didn't match expected structure`);
+    console.log(`Structure was: ${regex}`);
+    console.log(`Output was:\n${check.output.summary}`);
+    process.exit(1);
+  }
+
+  let results: Results = {
     total: parseInt(m[1], 10),
     passed: parseInt(m[3], 10),
     failed: parseInt(m[4], 10),
     skipped: parseInt(m[5], 10),
   };
+  return results;
 };
 
 let regressionsDetected = false;
-let outputLines = [];
+let outputLines: string[] = [];
 
 let suites = core.getInput("suites").split(",");
 for (const suite of suites) {
@@ -102,7 +98,7 @@ for (const suite of suites) {
   let reference = await getReferenceResults(suite);
   if (current.failed > reference.failed) {
     outputLines.push(
-      `Regression detected in ${spec.checkName}: ${current.failed} > ${reference.failed}`,
+      `Regression detected in ${suite}: ${current.failed} > ${reference.failed}`,
     );
     regressionsDetected = true;
   } else {
@@ -116,7 +112,7 @@ for (const suite of suites) {
     }
 
     outputLines.push(
-      `No regression in ${spec.checkName}: failed count ${diff} (${current.passed} passed, ${current.failed} failed)`,
+      `No regression in ${suite}: failed count ${diff} (${current.passed} passed, ${current.failed} failed)`,
     );
   }
 }

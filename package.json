@@ -2,7 +2,8 @@
   "name": "report-h2spec-regressions",
   "version": "1.0.0",
   "description": "",
-  "main": "index.mjs",
+  "main": "src/index.ts",
+  "type": "module",
   "scripts": {
     "package": "ncc build",
     "prepare": "husky install"
@@ -15,6 +16,7 @@
     "fast-xml-parser": "^4.3.2"
   },
   "devDependencies": {
+    "@types/node": "^20.8.10",
     "husky": "^8.0.0"
   }
 }
