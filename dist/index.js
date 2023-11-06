@@ -31977,10 +31977,6 @@ for (const suite of suites) {
         outputLines.push(`No regression in ${suite}: failed count ${diff} (${current.passed} passed, ${current.failed} failed)`);
     }
 }
-if (regressionsDetected) {
-    outputLines.push(`Regressions detected, failing the build`);
-    process.exit(1);
-}
 // Leave a comment on the PR with all lines in outputLines
 let comment = outputLines.join("\n");
 if (_actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue) {
@@ -31994,6 +31990,22 @@ if (_actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue) {
 }
 else {
     console.log(`Not a PR, not leaving a comment. Comment would've been:\n${comment}`);
+}
+/// Create a check with our results
+await octokit.rest.checks.create({
+    ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
+    name: "h2spec-regression",
+    head_sha: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.sha,
+    status: "completed",
+    conclusion: regressionsDetected ? "failure" : "success",
+    output: {
+        title: "h2spec-regression",
+        summary: outputLines.join("\n"),
+    },
+});
+if (regressionsDetected) {
+    outputLines.push(`Regressions detected, failing the build`);
+    process.exit(1);
 }
 
 __webpack_async_result__();

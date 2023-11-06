@@ -117,11 +117,6 @@ for (const suite of suites) {
   }
 }
 
-if (regressionsDetected) {
-  outputLines.push(`Regressions detected, failing the build`);
-  process.exit(1);
-}
-
 // Leave a comment on the PR with all lines in outputLines
 let comment = outputLines.join("\n");
 
@@ -137,4 +132,22 @@ if (github.context.issue) {
   console.log(
     `Not a PR, not leaving a comment. Comment would've been:\n${comment}`,
   );
+}
+
+/// Create a check with our results
+await octokit.rest.checks.create({
+  ...github.context.repo,
+  name: "h2spec-regression",
+  head_sha: github.context.sha,
+  status: "completed",
+  conclusion: regressionsDetected ? "failure" : "success",
+  output: {
+    title: "h2spec-regression",
+    summary: outputLines.join("\n"),
+  },
+});
+
+if (regressionsDetected) {
+  outputLines.push(`Regressions detected, failing the build`);
+  process.exit(1);
 }
