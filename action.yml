@@ -1,9 +1,10 @@
 name: 'Report h2spec regressions'
 description: 'Report h2spec regressions'
 inputs:
-  github-token:
+  token:
     description: 'GitHub token'
-    required: true
+    required: false
+    default: ${{ github.token }}
   suites:
     description: 'Comma-separated list of suites to check, e.g. h2spec-generic,h2spec-hpack,h2spec-http2'
     required: true

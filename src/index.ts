@@ -11,11 +11,7 @@ interface Results {
   skipped: number;
 }
 
-let githubToken = core.getInput("github-token");
-if (!githubToken) {
-  console.log("No github-token input provided, exiting");
-  process.exit(1);
-}
+let githubToken = core.getInput("token", { required: true });
 let octokit = github.getOctokit(githubToken);
 
 let checks = await octokit.rest.checks.listForRef({
@@ -89,7 +85,7 @@ let getReferenceResults = async (checkName: string) => {
 };
 
 /// Create a check with our results
-const createRep = await octokit.rest.checks.create({
+const createResp = await octokit.rest.checks.create({
   head_sha: github.context.sha,
   name: "h2spec-regression",
   status: "in_progress",
@@ -100,7 +96,7 @@ const createRep = await octokit.rest.checks.create({
   ...github.context.repo,
 });
 
-core.info(`Check created, id: ${createRep.data.id}`);
+core.info(`Check created, id: ${createResp.data.id}`);
 
 let regressionsDetected = false;
 let outputLines: string[] = [];
@@ -135,7 +131,7 @@ for (const suite of suites) {
 
 /// Update the check with our conclusion
 await octokit.rest.checks.update({
-  check_run_id: createRep.data.id,
+  check_run_id: createResp.data.id,
   conclusion: regressionsDetected ? "failure" : "success",
   status: "completed",
   output: {

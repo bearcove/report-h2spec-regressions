@@ -31888,11 +31888,7 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __we
 
 
 
-let githubToken = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("github-token");
-if (!githubToken) {
-    console.log("No github-token input provided, exiting");
-    process.exit(1);
-}
+let githubToken = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("token", { required: true });
 let octokit = _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit(githubToken);
 let checks = await octokit.rest.checks.listForRef({
     ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
@@ -31953,7 +31949,7 @@ let getReferenceResults = async (checkName) => {
     return results;
 };
 /// Create a check with our results
-const createRep = await octokit.rest.checks.create({
+const createResp = await octokit.rest.checks.create({
     head_sha: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.sha,
     name: "h2spec-regression",
     status: "in_progress",
@@ -31963,7 +31959,7 @@ const createRep = await octokit.rest.checks.create({
     },
     ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
 });
-_actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Check created, id: ${createRep.data.id}`);
+_actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Check created, id: ${createResp.data.id}`);
 let regressionsDetected = false;
 let outputLines = [];
 let suites = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("suites").split(",");
@@ -31997,7 +31993,7 @@ for (const suite of suites) {
 }
 /// Update the check with our conclusion
 await octokit.rest.checks.update({
-    check_run_id: createRep.data.id,
+    check_run_id: createResp.data.id,
     conclusion: regressionsDetected ? "failure" : "success",
     status: "completed",
     output: {
