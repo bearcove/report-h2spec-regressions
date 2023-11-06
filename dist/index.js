@@ -31873,9 +31873,12 @@ function wrappy (fn, cb) {
 /***/ }),
 
 /***/ 4850:
-/***/ ((module, __unused_webpack___webpack_exports__, __nccwpck_require__) => {
+/***/ ((module, __webpack_exports__, __nccwpck_require__) => {
 
 __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
+/* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
+/* harmony export */   "F": () => (/* binding */ getCheckRunContext)
+/* harmony export */ });
 /* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(4181);
 /* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(_actions_core__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(2726);
@@ -31897,6 +31900,27 @@ let checks = await octokit.rest.checks.listForRef({
 let xmlParser = new fast_xml_parser__WEBPACK_IMPORTED_MODULE_2__.XMLParser({
     ignoreAttributes: false,
 });
+function getCheckRunContext() {
+    if (_actions_github__WEBPACK_IMPORTED_MODULE_1__.context.eventName === "workflow_run") {
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.info("Action was triggered by workflow_run: using SHA and RUN_ID from triggering workflow");
+        const event = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload;
+        if (!event.workflow_run) {
+            throw new Error("Event of type 'workflow_run' is missing 'workflow_run' field");
+        }
+        return {
+            sha: event.workflow_run.head_commit.id,
+            runId: event.workflow_run.id,
+        };
+    }
+    const runId = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runId;
+    if (_actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.pull_request) {
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Action was triggered by ${_actions_github__WEBPACK_IMPORTED_MODULE_1__.context.eventName}: using SHA from head of source branch`);
+        const pr = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.pull_request;
+        return { sha: pr.head.sha, runId };
+    }
+    return { sha: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.sha, runId };
+}
+let context = getCheckRunContext();
 let getCurrentResults = async (junitPath) => {
     let doc = xmlParser.parse(await fs_promises__WEBPACK_IMPORTED_MODULE_3__.readFile(junitPath));
     let results = {
@@ -31950,7 +31974,7 @@ let getReferenceResults = async (checkName) => {
 };
 /// Create a check with our results
 const createResp = await octokit.rest.checks.create({
-    head_sha: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.sha,
+    head_sha: context.sha,
     name: "h2spec-regression",
     status: "in_progress",
     output: {
@@ -32354,4 +32378,6 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("zlib");
 /******/ // This entry module used 'module' so it can't be inlined
 /******/ var __webpack_exports__ = __nccwpck_require__(4850);
 /******/ __webpack_exports__ = await __webpack_exports__;
+/******/ var __webpack_exports__getCheckRunContext = __webpack_exports__.F;
+/******/ export { __webpack_exports__getCheckRunContext as getCheckRunContext };
 /******/ 
