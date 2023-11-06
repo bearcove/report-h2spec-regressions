@@ -88,6 +88,18 @@ let getReferenceResults = async (checkName: string) => {
   return results;
 };
 
+/// Create a check with our results
+const createRep = await octokit.rest.checks.create({
+  head_sha: github.context.sha,
+  name: "h2spec-regression",
+  status: "in_progress",
+  output: {
+    title: "h2spec-regression",
+    summary: "",
+  },
+  ...github.context.repo,
+});
+
 let regressionsDetected = false;
 let outputLines: string[] = [];
 
@@ -97,9 +109,9 @@ for (const suite of suites) {
   let current = await getCurrentResults(junitPath);
   let reference = await getReferenceResults(suite);
   if (current.failed > reference.failed) {
-    outputLines.push(
-      `Regression detected in ${suite}: ${current.failed} > ${reference.failed}`,
-    );
+    let line = `Regression detected in ${suite}: ${current.failed} > ${reference.failed}`;
+    outputLines.push(line);
+    core.error(line);
     regressionsDetected = true;
   } else {
     let diff;
@@ -111,43 +123,24 @@ for (const suite of suites) {
       diff = `+${current.failed - reference.failed}`;
     }
 
-    outputLines.push(
-      `No regression in ${suite}: failed count ${diff} (${current.passed} passed, ${current.failed} failed)`,
-    );
+    {
+      let line = `No regression in ${suite}: failed count ${diff} (${current.passed} passed, ${current.failed} failed)`;
+      outputLines.push(line);
+      core.info(line);
+    }
   }
 }
 
-// Leave a comment on the PR with all lines in outputLines
-let comment = outputLines.join("\n");
-
-if (typeof github.context.issue.number !== "undefined") {
-  let issue_number = github.context.issue.number;
-  console.log(`Leaving comment on PR #${issue_number}`);
-  await octokit.rest.issues.createComment({
-    ...github.context.repo,
-    issue_number,
-    body: comment,
-  });
-} else {
-  console.log(
-    `Not a PR, not leaving a comment. Comment would've been:\n${comment}`,
-  );
-}
-
-/// Create a check with our results
-await octokit.rest.checks.create({
-  ...github.context.repo,
-  name: "h2spec-regression",
-  head_sha: github.context.sha,
-  status: "completed",
+/// Update the check with our conclusion
+await octokit.rest.checks.update({
+  check_run_id: createRep.data.id,
   conclusion: regressionsDetected ? "failure" : "success",
+  status: "completed",
   output: {
     title: "h2spec-regression",
     summary: outputLines.join("\n"),
   },
+  ...github.context.repo,
 });
 
-if (regressionsDetected) {
-  outputLines.push(`Regressions detected, failing the build`);
-  process.exit(1);
-}
+core.info("Check created");

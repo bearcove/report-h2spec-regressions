@@ -31952,6 +31952,17 @@ let getReferenceResults = async (checkName) => {
     };
     return results;
 };
+/// Create a check with our results
+const createRep = await octokit.rest.checks.create({
+    head_sha: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.sha,
+    name: "h2spec-regression",
+    status: "in_progress",
+    output: {
+        title: "h2spec-regression",
+        summary: "",
+    },
+    ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
+});
 let regressionsDetected = false;
 let outputLines = [];
 let suites = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("suites").split(",");
@@ -31960,7 +31971,9 @@ for (const suite of suites) {
     let current = await getCurrentResults(junitPath);
     let reference = await getReferenceResults(suite);
     if (current.failed > reference.failed) {
-        outputLines.push(`Regression detected in ${suite}: ${current.failed} > ${reference.failed}`);
+        let line = `Regression detected in ${suite}: ${current.failed} > ${reference.failed}`;
+        outputLines.push(line);
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.error(line);
         regressionsDetected = true;
     }
     else {
@@ -31974,39 +31987,25 @@ for (const suite of suites) {
         else if (current.failed > reference.failed) {
             diff = `+${current.failed - reference.failed}`;
         }
-        outputLines.push(`No regression in ${suite}: failed count ${diff} (${current.passed} passed, ${current.failed} failed)`);
+        {
+            let line = `No regression in ${suite}: failed count ${diff} (${current.passed} passed, ${current.failed} failed)`;
+            outputLines.push(line);
+            _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(line);
+        }
     }
 }
-// Leave a comment on the PR with all lines in outputLines
-let comment = outputLines.join("\n");
-if (typeof _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue.number !== "undefined") {
-    let issue_number = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue.number;
-    console.log(`Leaving comment on PR #${issue_number}`);
-    await octokit.rest.issues.createComment({
-        ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
-        issue_number,
-        body: comment,
-    });
-}
-else {
-    console.log(`Not a PR, not leaving a comment. Comment would've been:\n${comment}`);
-}
-/// Create a check with our results
-await octokit.rest.checks.create({
-    ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
-    name: "h2spec-regression",
-    head_sha: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.sha,
-    status: "completed",
+/// Update the check with our conclusion
+await octokit.rest.checks.update({
+    check_run_id: createRep.data.id,
     conclusion: regressionsDetected ? "failure" : "success",
+    status: "completed",
     output: {
         title: "h2spec-regression",
         summary: outputLines.join("\n"),
     },
+    ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
 });
-if (regressionsDetected) {
-    outputLines.push(`Regressions detected, failing the build`);
-    process.exit(1);
-}
+_actions_core__WEBPACK_IMPORTED_MODULE_0__.info("Check created");
 
 __webpack_async_result__();
 } catch(e) { __webpack_async_result__(e); } }, 1);
