@@ -31979,7 +31979,7 @@ for (const suite of suites) {
 }
 // Leave a comment on the PR with all lines in outputLines
 let comment = outputLines.join("\n");
-if (_actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue) {
+if (typeof _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue.number !== "undefined") {
     let issue_number = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue.number;
     console.log(`Leaving comment on PR #${issue_number}`);
     await octokit.rest.issues.createComment({

@@ -120,7 +120,7 @@ for (const suite of suites) {
 // Leave a comment on the PR with all lines in outputLines
 let comment = outputLines.join("\n");
 
-if (github.context.issue) {
+if (typeof github.context.issue.number !== "undefined") {
   let issue_number = github.context.issue.number;
   console.log(`Leaving comment on PR #${issue_number}`);
   await octokit.rest.issues.createComment({
