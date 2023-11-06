@@ -31963,6 +31963,7 @@ const createRep = await octokit.rest.checks.create({
     },
     ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
 });
+_actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Check created, id: ${createRep.data.id}`);
 let regressionsDetected = false;
 let outputLines = [];
 let suites = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("suites").split(",");
@@ -32005,7 +32006,7 @@ await octokit.rest.checks.update({
     },
     ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
 });
-_actions_core__WEBPACK_IMPORTED_MODULE_0__.info("Check created");
+_actions_core__WEBPACK_IMPORTED_MODULE_0__.info("Check updated");
 
 __webpack_async_result__();
 } catch(e) { __webpack_async_result__(e); } }, 1);

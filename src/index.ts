@@ -100,6 +100,8 @@ const createRep = await octokit.rest.checks.create({
   ...github.context.repo,
 });
 
+core.info(`Check created, id: ${createRep.data.id}`);
+
 let regressionsDetected = false;
 let outputLines: string[] = [];
 
@@ -143,4 +145,4 @@ await octokit.rest.checks.update({
   ...github.context.repo,
 });
 
-core.info("Check created");
+core.info("Check updated");
