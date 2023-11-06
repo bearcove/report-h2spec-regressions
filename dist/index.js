@@ -31888,14 +31888,14 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __we
 
 
 
-let githubToken = _actions_core__WEBPACK_IMPORTED_MODULE_0___default().getInput("github-token");
+let githubToken = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("github-token");
 if (!githubToken) {
     console.log("No github-token input provided, exiting");
     process.exit(1);
 }
-let octokit = _actions_github__WEBPACK_IMPORTED_MODULE_1___default().getOctokit(githubToken);
+let octokit = _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit(githubToken);
 let checks = await octokit.rest.checks.listForRef({
-    ...(_actions_github__WEBPACK_IMPORTED_MODULE_1___default().context.repo),
+    ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
     ref: "main",
 });
 let xmlParser = new fast_xml_parser__WEBPACK_IMPORTED_MODULE_2__.XMLParser({
@@ -31954,7 +31954,7 @@ let getReferenceResults = async (checkName) => {
 };
 let regressionsDetected = false;
 let outputLines = [];
-let suites = _actions_core__WEBPACK_IMPORTED_MODULE_0___default().getInput("suites").split(",");
+let suites = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("suites").split(",");
 for (const suite of suites) {
     let junitPath = `./${suite}.xml`;
     let current = await getCurrentResults(junitPath);
@@ -31983,11 +31983,11 @@ if (regressionsDetected) {
 }
 // Leave a comment on the PR with all lines in outputLines
 let comment = outputLines.join("\n");
-if ((_actions_github__WEBPACK_IMPORTED_MODULE_1___default().context.issue)) {
-    let issue_number = (_actions_github__WEBPACK_IMPORTED_MODULE_1___default().context.issue.number);
+if (_actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue) {
+    let issue_number = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue.number;
     console.log(`Leaving comment on PR #${issue_number}`);
     await octokit.rest.issues.createComment({
-        ...(_actions_github__WEBPACK_IMPORTED_MODULE_1___default().context.repo),
+        ..._actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo,
         issue_number,
         body: comment,
     });
